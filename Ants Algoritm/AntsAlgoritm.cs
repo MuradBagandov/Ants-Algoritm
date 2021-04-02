@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using OpenTK;
 
 namespace Ants_Algoritm
 {
@@ -23,11 +24,11 @@ namespace Ants_Algoritm
 
     public class GraphVertex
     {
-        public Point Position;
+        public Vector2 Position;
         public int Number;
         public List<Transition> Transitions;
 
-        public GraphVertex(Point position)
+        public GraphVertex(Vector2 position)
         {
             Position = position;
             Transitions = new List<Transition>();
@@ -40,21 +41,22 @@ namespace Ants_Algoritm
         private const float coeffDistanceEffec = 1.0f;
         private const float coeffFeromonesEffec = 1.0f;
         Random random = new Random();
-        //private List<Point> _points = new List<Point>();
         private List<GraphVertex> Vertex = new List<GraphVertex>();
-        public AntsAlgoritm(List<Point> points)
+
+        
+        public AntsAlgoritm(List<Vector2> points)
         {
             int i=0, j=0;
-            foreach(Point item in points)
+            foreach(Vector2 item in points)
             {
                 GraphVertex _vertex = new GraphVertex(item);
                 _vertex.Number = i++;
                 j = 0;
-                foreach (Point item2 in points)
+                foreach (Vector2 item2 in points)
                 {
                     if (!item.Equals(item2))
                     {
-                        float distance = GetDistance(item, item2);
+                        float distance = Vector2.Distance(item2, item);
                         _vertex.Transitions.Add(new Transition(distance, 0.2f, j));
                     }
                     j++;
@@ -90,9 +92,19 @@ namespace Ants_Algoritm
                         }
 
                     }
-
                 }
             }
+        }
+
+
+        public List<Vector2> ComputeTrajectory(int BeginVertexNumber)
+        {
+            if (BeginVertexNumber > Vertex.Count)
+                throw new ArgumentException();
+
+            var sim = Simulate(BeginVertexNumber);
+
+            return sim.trajectory.Select(i => Vertex[i].Position).ToList();
         }
 
         public (List<int> trajectory, float lenght) Simulate(int BeginNumber)
@@ -151,11 +163,5 @@ namespace Ants_Algoritm
 
         private GraphVertex GetVertex(int number) => Vertex.Where(i => i.Number == number).FirstOrDefault();
 
-        private float GetDistance(Point p1, Point p2)
-        {
-            float dx = p2.X - p1.X;
-            float dy = p2.Y - p1.Y;
-            return (float)Math.Sqrt(dx * dx + dy * dy);
-        }
     }
 }

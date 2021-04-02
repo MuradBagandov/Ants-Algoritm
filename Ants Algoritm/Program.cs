@@ -20,12 +20,13 @@ namespace Ants_Algoritm
 
         static void Main(string[] args)
         {
-            aa = new AntsAlgoritm(points);
-            aa.Generate(10);
-            //using (var a = new WindowGL(800, 600))
-            //{
-            //    a.Run(60, 60);
-            //}
+            //aa = new AntsAlgoritm(points);
+            //aa.Generate(30);
+            //var trai = aa.ComputeTrajectory(0);
+            using (var a = new WindowGL(800, 600))
+            {
+                a.Run(60, 60);
+            }
         }
     }
 }

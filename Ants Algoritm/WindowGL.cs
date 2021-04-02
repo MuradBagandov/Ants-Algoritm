@@ -17,6 +17,9 @@ namespace Ants_Algoritm
         float coeffWindowsWidthToFieldWidth;
         float fieldHeight;
         List<Vector2> points = new List<Vector2>();
+        private AntsAlgoritm antsSimulator;
+        bool isSimulate = false;
+        List<Vector2> trajectory;
 
         public WindowGL(int width, int height) : base(width, height, new GraphicsMode(32, 24, 4, 16), "Ants", GameWindowFlags.FixedWindow)
         {
@@ -26,7 +29,21 @@ namespace Ants_Algoritm
 
         protected override void OnMouseMove(MouseMoveEventArgs e)
         {
+            
             base.OnMouseMove(e);
+        }
+
+        protected override void OnKeyDown(KeyboardKeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && points.Count > 1)
+            {
+                antsSimulator = new AntsAlgoritm(points);
+                antsSimulator.Generate(1000);
+                isSimulate = true;
+            }
+            
+
+            base.OnKeyDown(e);
         }
 
         protected override void OnMouseDown(MouseButtonEventArgs e)
@@ -66,6 +83,24 @@ namespace Ants_Algoritm
             foreach (Vector2 item in points)
                     GL.Vertex2(item.X, item.Y);
             GL.End();
+
+            if (trajectory != null)
+            {
+                GL.Color3(0.3, 0.9, 0.6);
+                GL.Begin(BeginMode.LineLoop);
+
+                foreach (Vector2 item in trajectory)
+                    GL.Vertex2(item.X, item.Y);
+                GL.End();
+            }
+
+            if (isSimulate)
+            {
+                antsSimulator.Generate(1);
+                trajectory = antsSimulator.ComputeTrajectory(0);
+            }
+            
+
 
             SwapBuffers();
             base.OnRenderFrame(e);
