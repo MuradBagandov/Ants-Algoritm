@@ -38,7 +38,7 @@ namespace Ants_Algoritm
             if (e.Key == Key.Enter && points.Count > 1)
             {
                 antsSimulator = new AntsAlgoritm(points);
-                antsSimulator.Generate(1000);
+                
                 isSimulate = true;
             }
             
@@ -66,8 +66,7 @@ namespace Ants_Algoritm
             GL.Ortho(-fieldWidth/2, fieldWidth / 2, fieldHeight / 2, -fieldHeight / 2, -1, 1);
             GL.MatrixMode(MatrixMode.Modelview);
             GL.LoadIdentity();
-            GL.LineWidth(1f);
-            GL.PointSize(10);
+            GL.PointSize(5);
             GL.Enable(EnableCap.AlphaTest);
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
@@ -77,15 +76,11 @@ namespace Ants_Algoritm
         {
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            GL.Color3(1.0, 1.0, 1.0);
-            GL.Begin(BeginMode.Points);
-
-            foreach (Vector2 item in points)
-                    GL.Vertex2(item.X, item.Y);
-            GL.End();
-
-            if (trajectory != null)
+            if (isSimulate)
             {
+                antsSimulator.Generate(1);
+                trajectory = antsSimulator.ComputeOptimalTrajectory(0,3);
+
                 GL.Color3(0.3, 0.9, 0.6);
                 GL.Begin(BeginMode.LineLoop);
 
@@ -94,12 +89,12 @@ namespace Ants_Algoritm
                 GL.End();
             }
 
-            if (isSimulate)
-            {
-                antsSimulator.Generate(1);
-                trajectory = antsSimulator.ComputeTrajectory(0);
-            }
-            
+            GL.Color3(1.0, 1.0, 1.0);
+            GL.Begin(BeginMode.Points);
+
+            foreach (Vector2 item in points)
+                GL.Vertex2(item.X, item.Y);
+            GL.End();
 
 
             SwapBuffers();

@@ -8,15 +8,15 @@ using OpenTK;
 
 namespace Ants_Algoritm
 {
-    public struct Transition
+    public class GraphEdge
     {
-        public float Distane;
+        public float Distance;
         public float Feromones;
         public int Number;
 
-        public Transition(float distane, float feromones, int number)
+        public GraphEdge(float distane, float feromones, int number)
         {
-            Distane = distane;
+            Distance = distane;
             Feromones = feromones;
             Number = number;
         }
@@ -26,27 +26,28 @@ namespace Ants_Algoritm
     {
         public Vector2 Position;
         public int Number;
-        public List<Transition> Transitions;
+        public List<GraphEdge> Edges;
 
         public GraphVertex(Vector2 position)
         {
             Position = position;
-            Transitions = new List<Transition>();
+            Edges = new List<GraphEdge>();
         }
     }
 
 
     public class AntsAlgoritm
     {
-        private const float coeffDistanceEffec = 1.0f;
-        private const float coeffFeromonesEffec = 1.0f;
-        Random random = new Random();
-        private List<GraphVertex> Vertex = new List<GraphVertex>();
+        private const float _DistanceEffectFactor = 1.0f;
+        private const float _FeromonesEffectFactor = 1.0f;
+        private const float _DefaultFeromones = 0.2f;
+        private List<GraphVertex> _Vertices = new List<GraphVertex>();
+        private Random _random = new Random();
 
         
         public AntsAlgoritm(List<Vector2> points)
         {
-            int i=0, j=0;
+            int i=0, j;
             foreach(Vector2 item in points)
             {
                 GraphVertex _vertex = new GraphVertex(item);
@@ -57,40 +58,44 @@ namespace Ants_Algoritm
                     if (!item.Equals(item2))
                     {
                         float distance = Vector2.Distance(item2, item);
-                        _vertex.Transitions.Add(new Transition(distance, 0.2f, j));
+                        _vertex.Edges.Add(new GraphEdge(distance, _DefaultFeromones, j));
                     }
                     j++;
                 }
-                Vertex.Add(_vertex);
+                _Vertices.Add(_vertex);
+            }
+        }
+
+
+        public void Reset()
+        {
+            foreach (GraphVertex vertex in _Vertices)
+            {
+                foreach (GraphEdge item in vertex.Edges)
+                    item.Feromones = _DefaultFeromones;
             }
         }
 
         public void Generate(int iteration)
         {
-            for (int iter = 1; iter < iteration; iter++)
+            for (int iter = 0; iter < iteration; iter++)
             {
                 List<(List<int> trajectory, float lenght)> trajectories = new List<(List<int>, float)>();
-                for (int i = 0; i < Vertex.Count; i++)
+                for (int i = 0; i < _Vertices.Count; i++)
                 {
                     var s = Simulate(i);
                     trajectories.Add(s);
                 }
 
+                (List<int> trajectory, float lenght) optimalTrajectory = trajectories.OrderBy(i => i.lenght).First();
 
-                var optimalTrajectory = trajectories.OrderBy(i => i.lenght).First();
                 for (int i = 0; i < optimalTrajectory.trajectory.Count - 1; i++)
                 {
                     var vert = GetVertex(optimalTrajectory.trajectory[i]);
-                    for (int j = 0; j < vert.Transitions.Count; j++)
+                    for (int j = 0; j < vert.Edges.Count; j++)
                     {
-                        if (vert.Transitions[j].Number == optimalTrajectory.trajectory[i + 1])
-                        {
-                            vert.Transitions[j] = new Transition(
-                                vert.Transitions[j].Distane,
-                                vert.Transitions[j].Feromones + 4 / optimalTrajectory.lenght,
-                                vert.Transitions[j].Number);
-                        }
-
+                        if (vert.Edges[j].Number == optimalTrajectory.trajectory[i + 1])
+                            vert.Edges[j].Feromones += +10 / optimalTrajectory.lenght;
                     }
                 }
             }
@@ -99,30 +104,47 @@ namespace Ants_Algoritm
 
         public List<Vector2> ComputeTrajectory(int BeginVertexNumber)
         {
-            if (BeginVertexNumber > Vertex.Count)
+            if (BeginVertexNumber > _Vertices.Count)
                 throw new ArgumentException();
 
             var sim = Simulate(BeginVertexNumber);
-
-            return sim.trajectory.Select(i => Vertex[i].Position).ToList();
+            return sim.trajectory.Select(i => _Vertices[i].Position).ToList();
         }
 
-        public (List<int> trajectory, float lenght) Simulate(int BeginNumber)
+        public List<Vector2> ComputeOptimalTrajectory(int BeginVertexNumber, int Iteration)
+        {
+            if (BeginVertexNumber > _Vertices.Count)
+                throw new ArgumentException();
+
+
+            (List<int> trajectory, float lenght) optimalTrajectory = default;
+            for (int i = 0; i < Iteration;i++)
+            {
+                var sim = Simulate(BeginVertexNumber);
+                if (i == 0 || sim.lenght < optimalTrajectory.lenght)
+                    optimalTrajectory = sim;
+            }
+
+            return optimalTrajectory.trajectory.Select(i => _Vertices[i].Position).ToList();
+        }
+
+
+        private (List<int> trajectory, float lenght) Simulate(int BeginNumber)
         {
             List<int> trajectory = new List<int>();
             float length = 0;
-            GraphVertex currentVertex = Vertex.Where(i => i.Number == BeginNumber).FirstOrDefault();
+            GraphVertex currentVertex = _Vertices.Where(i => i.Number == BeginNumber).FirstOrDefault();
             
             trajectory.Add(BeginNumber);
 
             while (true)
             {
                 List<(int number, double p)> probabilities = new List<(int, double)>();
-                foreach (Transition t in currentVertex.Transitions)
+                foreach (GraphEdge t in currentVertex.Edges)
                 {
                     if (trajectory.Where(i => i == t.Number).Count() > 0) 
                         continue;
-                    double p = Math.Pow(200.0/t.Distane, coeffDistanceEffec) * Math.Pow(t.Feromones, coeffFeromonesEffec);
+                    double p = Math.Pow(200.0/t.Distance, _DistanceEffectFactor) * Math.Pow(t.Feromones, _FeromonesEffectFactor);
                     probabilities.Add((t.Number, p));
                 }
                 if (probabilities.Count == 0)
@@ -137,8 +159,8 @@ namespace Ants_Algoritm
 
                 int nextVertext = RouletteProbability(probabilitiesVertexs);
 
-                length += currentVertex.Transitions.Where(i => i.Number == nextVertext).First().Distane;
-                currentVertex = Vertex.Where(i => i.Number == nextVertext).FirstOrDefault();
+                length += currentVertex.Edges.Where(i => i.Number == nextVertext).First().Distance;
+                currentVertex = _Vertices.Where(i => i.Number == nextVertext).FirstOrDefault();
                 
                 trajectory.Add(nextVertext);
             }
@@ -149,7 +171,7 @@ namespace Ants_Algoritm
 
         private int RouletteProbability(List<(int number, double p)> p)
         {
-            double r = random.NextDouble();
+            double r = _random.NextDouble();
 
             double sumProbability = 0;
             foreach ((int number, double p) item in p)
@@ -161,7 +183,7 @@ namespace Ants_Algoritm
             throw new ArgumentException();
         }
 
-        private GraphVertex GetVertex(int number) => Vertex.Where(i => i.Number == number).FirstOrDefault();
+        private GraphVertex GetVertex(int number) => _Vertices.Where(i => i.Number == number).FirstOrDefault();
 
     }
 }
